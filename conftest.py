@@ -20,6 +20,7 @@ class Mine:
     url: str
     webapp: str
     taxon: int
+    service_url: str | None = None
     jbrowse: str | None = None
     frontend: dict = field(default_factory=dict)
     gene: dict = field(default_factory=dict)
@@ -27,7 +28,17 @@ class Mine:
 
     @property
     def service(self) -> str:
+        """Web service root.  `service_url` when the mine's web service is not
+        published under the BlueGenes URL, else <url>/<webapp>/service."""
+        if self.service_url:
+            return self.service_url.rstrip("/")
         return f"{self.url}/{self.webapp}/service"
+
+    @property
+    def webapp_url(self) -> str:
+        """Root of the InterMine webapp (the service root without /service)."""
+        svc = self.service
+        return svc[: -len("/service")] if svc.endswith("/service") else svc
 
     def report(self, cls: str, obj_id) -> str:
         return f"{self.url}/{self.webapp}/report/{cls}/{obj_id}"

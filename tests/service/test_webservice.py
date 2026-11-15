@@ -1,4 +1,4 @@
-"""The InterMine web service itself: the Java webapp behind <url>/<webapp>/service."""
+"""The InterMine web service itself: the Java webapp behind <url>/<webapp>/service (or the mine's service_url)."""
 import re
 
 GENE_QUERY = (
@@ -82,6 +82,6 @@ def test_schemas_served_as_xml(http, mine):
     front end routes them to BlueGenes instead, queries silently stop
     validating (see docker_template nginx template)."""
     for name in ("query.xsd", "query.schema"):
-        r = http.get(f"{mine.url}/{mine.webapp}/webservice/{name}")
+        r = http.get(f"{mine.webapp_url}/webservice/{name}")
         r.raise_for_status()
         assert "html" not in r.headers.get("content-type", ""), f"{name} served as HTML"

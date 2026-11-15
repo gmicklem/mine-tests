@@ -3,6 +3,9 @@
 #
 # url        public root of the BlueGenes site (no trailing slash)
 # webapp     path segment of the InterMine web service: <url>/<webapp>/service
+# service_url  optional full root of the web service, for a deployment where it
+#            is not published under `url` (e.g. http://localhost:8090/humanmine/service);
+#            service tests use it, browser tests keep using `url`
 # taxon      NCBI taxon id of the organism the fixture gene belongs to
 # jbrowse    where JBrowse 1 is published for this mine; omit to skip those tests
 # frontend   deployment-specific routes added by intermineorg/docker_template;

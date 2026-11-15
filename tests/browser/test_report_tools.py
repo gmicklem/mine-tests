@@ -109,11 +109,11 @@ def test_no_uncaught_exceptions(report):
 
 
 def test_no_failed_requests_to_the_mine(report):
-    mine_url = report.mine.url
-    bad = [(u, f) for u, f in report.failed if u.startswith(mine_url) and "ABORTED" not in str(f).upper()]
+    mine_urls = (report.mine.url, report.mine.service)  # BlueGenes and the web service
+    bad = [(u, f) for u, f in report.failed if u.startswith(mine_urls) and "ABORTED" not in str(f).upper()]
     assert not bad, f"requests to the mine failed: {bad}"
     errors = [(m, s, u) for m, s, u in report.responses
-              if u.startswith(mine_url) and s >= 400 and not u.split("?")[0].endswith(BENIGN_404)]
+              if u.startswith(mine_urls) and s >= 400 and not u.split("?")[0].endswith(BENIGN_404)]
     assert not errors, f"error responses from the mine: {errors}; failed POST bodies: {report.bad_posts}"
 
 

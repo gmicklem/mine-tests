@@ -18,8 +18,8 @@ def test_track_list(http, mine):
     assert any(t.get("type") == "SequenceTrack" for t in tracks), "no reference sequence track"
     assert any(t.get("query", {}).get("type") == "Gene" for t in tracks), "no Gene track"
     for t in tracks:
-        assert t["baseUrl"].startswith(mine.url), f"track {t['label']} baseUrl {t['baseUrl']} is not the public URL"
-    assert body["names"]["url"].startswith(mine.url)
+        assert t["baseUrl"].startswith(mine.webapp_url), f"track {t['label']} baseUrl {t['baseUrl']} is not the public URL"
+    assert body["names"]["url"].startswith(mine.webapp_url)
 
 
 def test_reference_sequences_include_fixture_chromosome(http, mine):
