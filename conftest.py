@@ -2,6 +2,7 @@
 launch options that honour a proxy (needed when the tests run inside a
 sandbox).  See README.md."""
 import os
+import re
 import sys
 import tomllib
 from dataclasses import dataclass, field
@@ -61,6 +62,26 @@ def pytest_addoption(parser):
                           "to point the tests at a relay or a staging copy")
 
 
+_ENV_REF = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
+
+
+def _expand_env(value):
+    """Replace ${NAME} / ${NAME:-default} in every string of a config value
+    with the environment variable (or the default)."""
+    if isinstance(value, str):
+        def sub(m):
+            got = os.environ.get(m.group(1), m.group(2))
+            if got is None:
+                raise pytest.UsageError(f"mines config refers to ${{{m.group(1)}}}, which is not set and has no default")
+            return got
+        return _ENV_REF.sub(sub, value)
+    if isinstance(value, dict):
+        return {k: _expand_env(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env(v) for v in value]
+    return value
+
+
 def _load_mines(config) -> list[Mine]:
     with open(config.getoption("--config"), "rb") as fh:
         data = tomllib.load(fh)
@@ -70,7 +91,7 @@ def _load_mines(config) -> list[Mine]:
     for key, m in data["mines"].items():
         if wanted and key not in wanted:
             continue
-        m = dict(m)
+        m = _expand_env(dict(m))
         if key in overrides:
             m["url"] = overrides[key].rstrip("/")
         mines.append(Mine(key=key, **m))

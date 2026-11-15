@@ -10,6 +10,13 @@
 # jbrowse    where JBrowse 1 is published for this mine; omit to skip those tests
 # frontend   deployment-specific routes added by intermineorg/docker_template;
 #            set each to false (or omit) for a mine deployed another way
+# has_locations  false when the mine loads no chromosome locations: skips the
+#            JBrowse REST tests and drops the location from the gene query (default true)
+# has_tool_store  false when BlueGenes has no tool store / installed tools: skips
+#            the tool listing and bundle-patch tests (default true)
+# min_templates  the mine must publish at least this many templates (default 10)
+# Any string value may use ${NAME} or ${NAME:-default}, replaced from the
+# environment when the file is read.
 # gene       a gene whose report page is used for the browser tests; data
 #            below must match what the mine actually holds
 # gene.expect  which tool network calls are expected on that report page
@@ -88,3 +95,30 @@ rendered = [
   "bluegenesTissueExpressionVisualizer",
   "bluegenesToolCytoscape",
 ]
+
+# The rdfc2im demo mine (https://github.com/intermine/rdfc2im, 113 human genes from RDF
+# Portal) deployed on the same machine: BlueGenes on :5000, the web service on :8090 with
+# no nginx front end, no chromosome locations, no JBrowse, no tool store.  Point it at
+# another host or port with MINE_TESTS_LOCAL_URL (BlueGenes) and
+# MINE_TESTS_LOCAL_SERVICE_URL (full web service root).
+[mines.local]
+url = "${MINE_TESTS_LOCAL_URL:-http://localhost:5000}"
+service_url = "${MINE_TESTS_LOCAL_SERVICE_URL:-http://localhost:8090/humanmine/service}"
+webapp = "humanmine"
+taxon = 9606
+has_locations = false
+has_tool_store = false
+min_templates = 9
+
+[mines.local.gene]
+id = 1000940                # CYP2D6; the id changes when the mine is rebuilt
+symbol = "CYP2D6"
+primary_identifier = "1565" # NCBI gene id
+min_proteins = 58           # proteins the demo mine holds for it; no pdb: the demo has no structures
+
+[mines.local.gene.expect]
+rcsb = false
+align = false
+
+[mines.local.tools]
+rendered = []

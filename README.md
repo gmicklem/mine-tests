@@ -7,8 +7,8 @@ have their own unit tests; this covers what those cannot, a running mine as
 users see it. Run it before and after changing the backend, BlueGenes, a
 tool, or the Docker deployment.
 
-HumanMine and FlyMine are configured in [`mines.toml`](mines.toml); add a
-mine by adding a section there.
+HumanMine, FlyMine and a local demo mine (`local`, see below) are configured
+in [`mines.toml`](mines.toml); add a mine by adding a section there.
 
 ## Layout
 
@@ -69,7 +69,48 @@ Useful options:
 | `MINE_TESTS_PROXY=http://host:port` | browsers use this proxy (requests uses `HTTPS_PROXY` as usual) |
 | `MINE_TESTS_IGNORE_TLS=1` | accept any certificate (proxied sandboxes, self-signed staging) |
 | `MINE_TESTS_CDP=http://host:9222` | drive an already-running Chromium over the DevTools protocol instead of launching one |
+| `MINE_TESTS_LOCAL_URL`, `MINE_TESTS_LOCAL_SERVICE_URL` | BlueGenes root and web service root of the `local` mine (see below) |
 | `MINE_TESTS_HTTP_TIMEOUT=120` | per-request timeout for the service tests, seconds |
+
+## Mine options
+
+Per mine in `mines.toml` (all optional except `url`, `webapp`, `taxon`):
+
+| Key | Default | Effect |
+|---|---|---|
+| `service_url` | `<url>/<webapp>/service` | full web service root, when it is not under the BlueGenes URL; service tests use it, browser tests keep `url` |
+| `has_locations` | `true` | `false` skips the JBrowse REST tests that need a chromosome (refseqs, features, sequence, stats, names) and drops chromosome/location from the fixture-gene query |
+| `has_tool_store` | `true` | `false` skips the tool-store listing and the tool bundle patch tests |
+| `min_templates` | `10` | the mine must publish at least this many templates |
+| `jbrowse` | none | omit to skip the JBrowse site and iframe tests |
+| `frontend.*` | none | docker_template nginx routes; omit or `false` to skip the matching tests |
+| `gene.pdb` | none | omit to skip the RCSB structure check |
+
+Any string in the file may use `${NAME}` or `${NAME:-default}`, read from the
+environment when the file is loaded.
+
+### The local demo mine
+
+`[mines.local]` describes the [rdfc2im](https://github.com/intermine/rdfc2im)
+demo mine (113 human genes, no chromosome locations, no JBrowse, no tool
+store, no nginx front end) as run by its Docker stack: BlueGenes on
+`http://localhost:5000`, web service on `http://localhost:8090/humanmine/service`.
+For another host or port:
+
+```sh
+MINE_TESTS_LOCAL_URL=http://demo.example:5000 \
+MINE_TESTS_LOCAL_SERVICE_URL=http://demo.example:8090/humanmine/service \
+  pytest --mine local tests/service
+```
+
+The fixture gene is CYP2D6; its object id (1000940) changes when the mine is
+rebuilt, so recheck `gene.id` after a rebuild
+(`Gene.symbol = CYP2D6`, view `Gene.id`).  Browser tests against it need the
+CDN hosts BlueGenes loads scripts from (`cdn.intermine.org`,
+`cdn.jsdelivr.net`, `code.jquery.com`, `cdnjs.cloudflare.com`); where they are
+blocked, `test_imjs_present_for_tools`, `test_imjs_is_available` and
+`test_page_scripts_load` fail by design.  `test_favicon` fails while the
+deployment's BlueGenes redirects `/favicon.ico` to an internal Docker host name.
 
 ## Interpreting failures
 
