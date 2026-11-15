@@ -11,6 +11,11 @@ from pathlib import Path
 import pytest
 import requests
 
+# Playwright forces Chromium to send localhost traffic through a configured
+# proxy, ignoring the proxy's bypass list, so a local mine behind
+# MINE_TESTS_PROXY would get the proxy's 403.  Honour the bypass instead.
+os.environ.setdefault("PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK", "1")
+
 ROOT = Path(__file__).parent
 TIMEOUT = float(os.environ.get("MINE_TESTS_HTTP_TIMEOUT", "60"))
 
@@ -168,8 +173,17 @@ def require_tool_store(mine: Mine):
 # same tests run from a developer machine, CI, or a proxied sandbox.
 
 @pytest.fixture(scope="session")
-def browser_type_launch_args(browser_type_launch_args):
+def browser_type_launch_args(browser_type_launch_args, browser_name):
     args = dict(browser_type_launch_args)
+    # An existing Chromium instead of Playwright's own (MINE_TESTS_BROWSER_PATH),
+    # for machines Playwright does not support.  MINE_TESTS_BROWSER_ARGS adds
+    # command-line flags (space separated), e.g. "--no-sandbox --disable-dev-shm-usage".
+    path = os.environ.get("MINE_TESTS_BROWSER_PATH")
+    if path and browser_name == "chromium":
+        args["executable_path"] = path
+    extra = os.environ.get("MINE_TESTS_BROWSER_ARGS", "").split()
+    if extra and browser_name == "chromium":
+        args["args"] = list(args.get("args") or []) + extra
     proxy = os.environ.get("MINE_TESTS_PROXY")
     if proxy:
         args["proxy"] = {"server": proxy, "bypass": "localhost,127.0.0.1"}

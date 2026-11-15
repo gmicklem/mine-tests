@@ -66,10 +66,12 @@ Useful options:
 | `--mine KEY` | test only this mine (repeatable) |
 | `--config FILE` | another TOML file, e.g. for a staging mine |
 | `--url-override KEY=URL` | replace a mine's public URL, e.g. to point at the relay or a local stack; the fixtures stay the same |
-| `MINE_TESTS_PROXY=http://host:port` | browsers use this proxy (requests uses `HTTPS_PROXY` as usual) |
+| `MINE_TESTS_PROXY=http://host:port` | browsers use this proxy (requests uses `HTTPS_PROXY` as usual); localhost and 127.0.0.1 bypass it, so a local mine works |
 | `MINE_TESTS_IGNORE_TLS=1` | accept any certificate (proxied sandboxes, self-signed staging) |
 | `MINE_TESTS_CDP=http://host:9222` | drive an already-running Chromium over the DevTools protocol instead of launching one |
 | `MINE_TESTS_LOCAL_URL`, `MINE_TESTS_LOCAL_SERVICE_URL` | BlueGenes root and web service root of the `local` mine (see below) |
+| `MINE_TESTS_BROWSER_PATH=/path/to/chromium` | launch this Chromium binary instead of Playwright's own (Chromium only; `run-browser-tests.sh` then runs natively instead of in Docker) |
+| `MINE_TESTS_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"` | extra Chromium command-line flags; `--disable-dev-shm-usage` is needed when `/dev/shm` is small (64 MB in some containers) |
 | `MINE_TESTS_HTTP_TIMEOUT=120` | per-request timeout for the service tests, seconds |
 
 ## Mine options
