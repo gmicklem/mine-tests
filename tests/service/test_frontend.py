@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from conftest import feature
+from conftest import feature, require_tool_store
 
 
 def test_home_page_is_bluegenes(http, mine):
@@ -45,6 +45,7 @@ def test_vendor_imjs_route(http, mine):
 
 
 def test_tool_store_lists_tools_and_serves_their_files(http, mine):
+    require_tool_store(mine)
     r = http.get(mine.url + "/api/tools/all")
     r.raise_for_status()
     tools = r.json()["tools"]

@@ -2,7 +2,7 @@
 that reads them (intermineorg/jbrowse)."""
 import pytest
 
-from conftest import feature
+from conftest import feature, require_locations
 
 
 def jb(mine):
@@ -23,6 +23,7 @@ def test_track_list(http, mine):
 
 
 def test_reference_sequences_include_fixture_chromosome(http, mine):
+    require_locations(mine)
     r = http.get(f"{jb(mine)}/config/{mine.taxon}/seq/refSeqs.json")
     r.raise_for_status()
     refs = {x["name"]: x for x in r.json()}
@@ -32,6 +33,7 @@ def test_reference_sequences_include_fixture_chromosome(http, mine):
 
 
 def test_features_in_gene_region(http, mine):
+    require_locations(mine)
     g = mine.gene
     r = http.get(f"{jb(mine)}/{mine.taxon}/features/{g['chromosome']}",
                  params={"start": g["start"] - 1, "end": g["end"], "type": "Gene"})
@@ -45,6 +47,7 @@ def test_features_in_gene_region(http, mine):
 
 
 def test_reference_sequence_fetch(http, mine):
+    require_locations(mine)
     g = mine.gene
     start, end = g["start"], g["start"] + 50
     r = http.get(f"{jb(mine)}/{mine.taxon}/features/{g['chromosome']}",
@@ -57,6 +60,7 @@ def test_reference_sequence_fetch(http, mine):
 
 
 def test_stats(http, mine):
+    require_locations(mine)
     g = mine.gene
     r = http.get(f"{jb(mine)}/{mine.taxon}/stats/global")
     r.raise_for_status()
@@ -68,6 +72,7 @@ def test_stats(http, mine):
 
 
 def test_name_search(http, mine):
+    require_locations(mine)
     g = mine.gene
     r = http.get(f"{jb(mine)}/names/{mine.taxon}", params={"equals": g["symbol"]})
     r.raise_for_status()

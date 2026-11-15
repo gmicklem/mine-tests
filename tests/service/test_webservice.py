@@ -1,10 +1,10 @@
 """The InterMine web service itself: the Java webapp behind <url>/<webapp>/service (or the mine's service_url)."""
 import re
 
+LOCATION_VIEW = " Gene.chromosome.primaryIdentifier Gene.chromosomeLocation.start Gene.chromosomeLocation.end"
+
 GENE_QUERY = (
-    '<query model="genomic" view="Gene.id Gene.symbol Gene.primaryIdentifier '
-    'Gene.chromosome.primaryIdentifier Gene.chromosomeLocation.start '
-    'Gene.chromosomeLocation.end">'
+    '<query model="genomic" view="Gene.id Gene.symbol Gene.primaryIdentifier{location_view}">'
     '<constraint path="Gene.id" op="=" value="{id}"/></query>'
 )
 
@@ -40,9 +40,12 @@ def test_web_properties(http, mine):
 
 
 def test_query_fixture_gene(http, mine):
+    """The gene's identifiers always; its chromosome location only when the
+    mine loads locations (has_locations) and the fixture records it."""
     g = mine.gene
-    r = http.get(f"{mine.service}/query/results",
-                 params={"query": GENE_QUERY.format(id=g["id"]), "format": "json"})
+    with_location = mine.has_locations and all(k in g for k in ("chromosome", "start", "end"))
+    query = GENE_QUERY.format(id=g["id"], location_view=LOCATION_VIEW if with_location else "")
+    r = http.get(f"{mine.service}/query/results", params={"query": query, "format": "json"})
     r.raise_for_status()
     body = r.json()
     assert body["wasSuccessful"], body.get("error")
@@ -50,8 +53,9 @@ def test_query_fixture_gene(http, mine):
     row = body["results"][0]
     assert row[1] == g["symbol"]
     assert row[2] == g["primary_identifier"]
-    assert row[3] == g["chromosome"]
-    assert row[4] == g["start"] and row[5] == g["end"], "chromosome location changed"
+    if with_location:
+        assert row[3] == g["chromosome"]
+        assert row[4] == g["start"] and row[5] == g["end"], "chromosome location changed"
 
 
 def test_keyword_search_finds_fixture_gene(http, mine):
@@ -65,7 +69,8 @@ def test_keyword_search_finds_fixture_gene(http, mine):
 def test_templates_available(http, mine):
     r = http.get(f"{mine.service}/templates", params={"format": "json"})
     r.raise_for_status()
-    assert len(r.json()["templates"]) > 10
+    n = len(r.json()["templates"])
+    assert n >= mine.min_templates, f"{n} templates, expected at least {mine.min_templates} (min_templates)"
 
 
 def test_fixture_gene_proteins(http, mine):

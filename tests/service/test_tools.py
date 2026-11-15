@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from conftest import feature
+from conftest import feature, require_tool_store
 
 DEAD_ALIGNER = "https://sequencealignment.apps.intermine.org"
 RCSB_V1 = "rcsbsearch/v1/query"
@@ -13,6 +13,7 @@ LEGACY_WHEEL = 't.mousewheel="_onmousewheel"'
 
 
 def bundle(http, mine, tool):
+    require_tool_store(mine)
     r = http.get(f"{mine.url}/tools/@intermine/{tool}/dist/bundle.js")
     r.raise_for_status()
     return r.text

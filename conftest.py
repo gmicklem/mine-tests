@@ -22,6 +22,9 @@ class Mine:
     taxon: int
     service_url: str | None = None
     jbrowse: str | None = None
+    has_locations: bool = True      # chromosome locations are loaded
+    has_tool_store: bool = True     # BlueGenes tool store with tools installed
+    min_templates: int = 10         # templates the mine must publish (at least)
     frontend: dict = field(default_factory=dict)
     gene: dict = field(default_factory=dict)
     tools: dict = field(default_factory=dict)
@@ -121,6 +124,21 @@ def feature(mine: Mine, section: str, name: str | None = None):
         label = section if name is None else f"{section}.{name}"
         pytest.skip(f"{mine.key}: {label} not configured")
     return value
+
+
+def require_locations(mine: Mine):
+    """Skip unless the mine has chromosome locations and the fixture gene
+    records where it is (gene.chromosome, start, end)."""
+    if not mine.has_locations:
+        pytest.skip(f"{mine.key}: has_locations = false (no chromosome locations loaded)")
+    for name in ("chromosome", "start", "end"):
+        feature(mine, "gene", name)
+
+
+def require_tool_store(mine: Mine):
+    """Skip when the mine's BlueGenes has no tool store / installed tools."""
+    if not mine.has_tool_store:
+        pytest.skip(f"{mine.key}: has_tool_store = false")
 
 
 # ---- Playwright (tests/browser) -------------------------------------------
