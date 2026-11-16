@@ -39,12 +39,12 @@ def test_web_properties(http, mine):
     assert props["project"]["title"], "project.title missing"
 
 
-def test_query_fixture_gene(http, mine):
+def test_query_fixture_gene(http, mine, gene_id):
     """The gene's identifiers always; its chromosome location only when the
     mine loads locations (has_locations) and the fixture records it."""
     g = mine.gene
     with_location = mine.has_locations and all(k in g for k in ("chromosome", "start", "end"))
-    query = GENE_QUERY.format(id=g["id"], location_view=LOCATION_VIEW if with_location else "")
+    query = GENE_QUERY.format(id=gene_id, location_view=LOCATION_VIEW if with_location else "")
     r = http.get(f"{mine.service}/query/results", params={"query": query, "format": "json"})
     r.raise_for_status()
     body = r.json()
@@ -58,12 +58,12 @@ def test_query_fixture_gene(http, mine):
         assert row[4] == g["start"] and row[5] == g["end"], "chromosome location changed"
 
 
-def test_keyword_search_finds_fixture_gene(http, mine):
+def test_keyword_search_finds_fixture_gene(http, mine, gene_id):
     r = http.get(f"{mine.service}/search", params={"q": mine.gene["symbol"], "format": "json"})
     r.raise_for_status()
     body = r.json()
     ids = [hit["id"] for hit in body["results"] if hit["type"] == "Gene"]
-    assert mine.gene["id"] in ids, f"keyword search for {mine.gene['symbol']} did not return the gene"
+    assert gene_id in ids, f"keyword search for {mine.gene['symbol']} did not return the gene"
 
 
 def test_templates_available(http, mine):
@@ -73,9 +73,9 @@ def test_templates_available(http, mine):
     assert n >= mine.min_templates, f"{n} templates, expected at least {mine.min_templates} (min_templates)"
 
 
-def test_fixture_gene_proteins(http, mine):
+def test_fixture_gene_proteins(http, mine, gene_id):
     q = ('<query model="genomic" view="Gene.proteins.primaryAccession">'
-         f'<constraint path="Gene.id" op="=" value="{mine.gene["id"]}"/></query>')
+         f'<constraint path="Gene.id" op="=" value="{gene_id}"/></query>')
     r = http.get(f"{mine.service}/query/results", params={"query": q, "format": "json"})
     r.raise_for_status()
     n = len(r.json()["results"])

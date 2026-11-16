@@ -139,6 +139,47 @@ def http():
     return s
 
 
+def _resolve_gene_id(http, mine: Mine) -> int:
+    """InterMine object id of the mine's fixture gene, looked up by
+    primaryIdentifier (else symbol) in the organism with the mine's taxon.
+    Object ids change on every rebuild, so gene.id in the config is only the
+    fallback for when the lookup cannot be done (the web service is down, or
+    the gene is not found)."""
+    g = mine.gene
+    configured = g.get("id")
+    if g.get("primary_identifier"):
+        field, value = "primaryIdentifier", g["primary_identifier"]
+    elif g.get("symbol"):
+        field, value = "symbol", g["symbol"]
+    else:
+        if configured is None:
+            pytest.fail(f"{mine.key}: gene needs primary_identifier, symbol or id")
+        return configured
+    query = (f'<query model="genomic" view="Gene.id">'
+             f'<constraint path="Gene.{field}" op="=" value="{value}"/>'
+             f'<constraint path="Gene.organism.taxonId" op="=" value="{mine.taxon}"/></query>')
+    try:
+        r = http.get(f"{mine.service}/query/results", params={"query": query, "format": "json"})
+        r.raise_for_status()
+        rows = r.json()["results"]
+    except (requests.RequestException, ValueError, KeyError) as e:
+        if configured is not None:
+            return configured
+        pytest.fail(f"{mine.key}: cannot look up Gene.{field} = {value} and gene.id is not configured: {e}")
+    if len(rows) == 1:
+        return rows[0][0]
+    if configured is not None:
+        return configured
+    pytest.fail(f"{mine.key}: Gene.{field} = {value} matched {len(rows)} genes and gene.id is not configured")
+
+
+@pytest.fixture(scope="session")
+def gene_id(http, mine) -> int:
+    """Object id of the fixture gene (report/Gene/<id>), resolved once per
+    mine and session by Gene.primaryIdentifier or symbol."""
+    return _resolve_gene_id(http, mine)
+
+
 def feature(mine: Mine, section: str, name: str | None = None):
     """Return a configured feature value, skipping the test when the mine's
     config lacks or disables it.  feature(mine, "jbrowse"),

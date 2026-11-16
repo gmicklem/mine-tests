@@ -47,10 +47,10 @@ def test_align_sequence_route(http, mine):
 
 
 @pytest.mark.external
-def test_rcsb_v2_finds_structure_for_fixture_protein(http, mine):
+def test_rcsb_v2_finds_structure_for_fixture_protein(http, mine, gene_id):
     pdb = feature(mine, "gene", "pdb")
     q = ('<query model="genomic" view="Gene.proteins.primaryAccession">'
-         f'<constraint path="Gene.id" op="=" value="{mine.gene["id"]}"/></query>')
+         f'<constraint path="Gene.id" op="=" value="{gene_id}"/></query>')
     accs = [row[0] for row in http.get(f"{mine.service}/query/results",
                                        params={"query": q, "format": "json"}).json()["results"] if row[0]]
     nodes = [{"type": "terminal", "service": "text", "parameters": {
