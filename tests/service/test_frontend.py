@@ -76,11 +76,16 @@ def test_classic_webapp(http, mine):
 
 
 def test_no_internal_hostnames_leak(http, mine):
-    """Redirects or links to http://tomcat:8080 or http://bluegenes:5000 mean
-    the public URL is not configured (webapp.baseurl / nginx headers)."""
-    for url in (mine.url + "/", mine.url + "/favicon.ico", mine.service + "/version"):
+    """Redirects or links to http://tomcat:8080, http://bluegenes:5000 or
+    http://mine:8090 (compose service names) mean the public URL is not
+    configured (webapp.baseurl, the BlueGenes service root, nginx headers)."""
+    internal = r"https?://(tomcat|bluegenes|jbrowse|aligner|mine)[:/]"
+    for url in (mine.url + "/", mine.url + "/favicon.ico", mine.service + "/version",
+                mine.service + "/branding"):
         r = http.get(url, allow_redirects=False)
         loc = r.headers.get("location", "")
-        assert not re.search(r"https?://(tomcat|bluegenes|jbrowse|aligner)[:/]", loc), f"{url} redirects to {loc}"
+        assert not re.search(internal, loc), f"{url} redirects to {loc}"
+        if url.endswith("/branding"):
+            assert not re.search(internal, r.text), "internal hostname in /service/branding"
     r = http.get(mine.url + "/")
-    assert not re.search(r"https?://(tomcat|bluegenes):\d+", r.text), "internal hostname in HTML"
+    assert not re.search(r"https?://(tomcat|bluegenes|mine):\d+", r.text), "internal hostname in HTML"
