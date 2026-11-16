@@ -18,7 +18,9 @@
 # Any string value may use ${NAME} or ${NAME:-default}, replaced from the
 # environment when the file is read.
 # gene       a gene whose report page is used for the browser tests; data
-#            below must match what the mine actually holds
+#            below must match what the mine actually holds.  Its object id
+#            is looked up at test start by primary_identifier (else symbol)
+#            in the mine's taxon; gene.id is only the fallback
 # gene.expect  which tool network calls are expected on that report page
 # tools.rendered  BlueGenes tool panels (config.json toolName.cljs) that
 #            must draw something on that report page
@@ -35,7 +37,7 @@ align_sequence = true       # nginx routes /align-sequence to the aligner contai
 classic_webapp = "/query"   # the JSP webapp is published under this path
 
 [mines.humanmine.gene]
-id = 1234788                # InterMine object id (report/Gene/<id>)
+id = 1234788                # fallback object id (report/Gene/<id>); the tests resolve the gene by primary_identifier
 symbol = "PAX6"
 primary_identifier = "5080"
 chromosome = "11"
@@ -74,7 +76,7 @@ align_sequence = true
 classic_webapp = "/query"
 
 [mines.flymine.gene]
-id = 1033224
+id = 1033224                # fallback object id; resolved by primary_identifier at test start
 symbol = "Scr"
 primary_identifier = "FBgn0003339"
 chromosome = "3R"
@@ -111,7 +113,8 @@ has_tool_store = false
 min_templates = 9
 
 [mines.local.gene]
-id = 1000940                # CYP2D6; the id changes when the mine is rebuilt
+# no gene.id: the object id changes on every rebuild, so the tests look CYP2D6 up
+# by primary_identifier
 symbol = "CYP2D6"
 primary_identifier = "1565" # NCBI gene id
 min_proteins = 58           # proteins the demo mine holds for it; no pdb: the demo has no structures

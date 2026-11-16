@@ -49,7 +49,7 @@ JS_TOOL_PANELS = """
 
 
 @pytest.fixture(scope="module")
-def report(browser, browser_context_args, mine):
+def report(browser, browser_context_args, mine, gene_id):
     ctx = browser.new_context(**browser_context_args)
     page = ctx.new_page()
     cap = SimpleNamespace(mine=mine, page=page, errors=[], console_errors=[], responses=[], failed=[], bad_posts=[])
@@ -60,7 +60,7 @@ def report(browser, browser_context_args, mine):
     page.on("response", lambda r: cap.bad_posts.append((r.url, (r.request.post_data or "")[:400]))
             if r.status >= 400 and r.request.method == "POST" else None)
     page.on("requestfailed", lambda r: cap.failed.append((r.url, r.failure)))
-    page.goto(mine.report("Gene", mine.gene["id"]), wait_until="domcontentloaded", timeout=PAGE_TIMEOUT_MS)
+    page.goto(mine.report("Gene", gene_id), wait_until="domcontentloaded", timeout=PAGE_TIMEOUT_MS)
     expected = list(mine.tools.get("rendered", []))
     try:
         for cls in expected:

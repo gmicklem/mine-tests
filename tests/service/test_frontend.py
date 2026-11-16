@@ -14,8 +14,8 @@ def test_home_page_is_bluegenes(http, mine):
     assert re.search(r"/js/compiled/app[^\"']*\.js", r.text), "BlueGenes app bundle not referenced"
 
 
-def test_report_page_served(http, mine):
-    r = http.get(mine.report("Gene", mine.gene["id"]))
+def test_report_page_served(http, mine, gene_id):
+    r = http.get(mine.report("Gene", gene_id))
     r.raise_for_status()
     assert "text/html" in r.headers["content-type"]
 

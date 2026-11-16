@@ -86,6 +86,8 @@ Per mine in `mines.toml` (all optional except `url`, `webapp`, `taxon`):
 | `min_templates` | `10` | the mine must publish at least this many templates |
 | `jbrowse` | none | omit to skip the JBrowse site and iframe tests |
 | `frontend.*` | none | docker_template nginx routes; omit or `false` to skip the matching tests |
+| `gene.primary_identifier` / `gene.symbol` | none | how the fixture gene's object id is looked up at test start (primaryIdentifier preferred) |
+| `gene.id` | none | fallback object id, used only when that lookup fails; ids change on rebuild |
 | `gene.pdb` | none | omit to skip the RCSB structure check |
 
 Any string in the file may use `${NAME}` or `${NAME:-default}`, read from the
@@ -105,9 +107,21 @@ MINE_TESTS_LOCAL_SERVICE_URL=http://demo.example:8090/humanmine/service \
   pytest --mine local tests/service
 ```
 
-The fixture gene is CYP2D6; its object id (1000940) changes when the mine is
-rebuilt, so recheck `gene.id` after a rebuild
-(`Gene.symbol = CYP2D6`, view `Gene.id`).  Browser tests against it need the
+The fixture gene is CYP2D6.  Its object id changes whenever the mine is
+rebuilt, so the tests do not pin one: a session-scoped `gene_id` fixture looks
+the gene up once per mine by `gene.primary_identifier` (else `gene.symbol`) and
+the mine's `taxon`, through `/service/query/results`.  `gene.id` in
+`mines.toml` is optional and only the fallback when that lookup cannot be done
+(web service down, gene not found); the `local` mine configures none.  To test
+a second local stack, for example the one on 18090/15000:
+
+```sh
+MINE_TESTS_LOCAL_URL=http://localhost:15000 \
+MINE_TESTS_LOCAL_SERVICE_URL=http://localhost:18090/humanmine/service \
+  pytest --mine local tests/service
+```
+
+Browser tests against it need the
 CDN hosts BlueGenes loads scripts from (`cdn.intermine.org`,
 `cdn.jsdelivr.net`, `code.jquery.com`, `cdnjs.cloudflare.com`); where they are
 blocked, `test_imjs_present_for_tools`, `test_imjs_is_available` and
