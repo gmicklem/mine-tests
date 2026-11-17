@@ -121,6 +121,12 @@ MINE_TESTS_LOCAL_SERVICE_URL=http://localhost:18090/humanmine/service \
   pytest --mine local tests/service
 ```
 
+The `local` mine has no tool store unless the stack has one: set
+`MINE_TESTS_LOCAL_TOOL_STORE=true` for a BlueGenes started with
+`BLUEGENES_TOOL_PATH` (the tool-store and `patched` bundle tests then run), and
+`MINE_TESTS_LOCAL_ALIGN_SEQUENCE=true` when `/align-sequence` is routed on its
+origin (the MSA bundle and route tests then run).  Unset, behaviour is as before.
+
 Browser tests against it need the
 CDN hosts BlueGenes loads scripts from (`cdn.intermine.org`,
 `cdn.jsdelivr.net`, `code.jquery.com`, `cdnjs.cloudflare.com`); where they are

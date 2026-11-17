@@ -97,6 +97,9 @@ def _load_mines(config) -> list[Mine]:
         if wanted and key not in wanted:
             continue
         m = _expand_env(dict(m))
+        for flag in ("has_locations", "has_tool_store"):     # "${VAR:-false}" arrives as a string
+            if isinstance(m.get(flag), str):
+                m[flag] = m[flag].strip().lower() in ("1", "true", "yes", "on")
         if key in overrides:
             m["url"] = overrides[key].rstrip("/")
         mines.append(Mine(key=key, **m))
