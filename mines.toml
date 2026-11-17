@@ -109,7 +109,9 @@ service_url = "${MINE_TESTS_LOCAL_SERVICE_URL:-http://localhost:8090/humanmine/s
 webapp = "humanmine"
 taxon = 9606
 has_locations = false
-has_tool_store = false
+# the tool store of the stack at MINE_TESTS_LOCAL_URL: false for the default :5000 stack,
+# MINE_TESTS_LOCAL_TOOL_STORE=true for a BlueGenes started with BLUEGENES_TOOL_PATH (e.g. :15001)
+has_tool_store = "${MINE_TESTS_LOCAL_TOOL_STORE:-false}"
 min_templates = 9
 
 [mines.local.gene]
@@ -118,6 +120,10 @@ min_templates = 9
 symbol = "CYP2D6"
 primary_identifier = "1565" # NCBI gene id
 min_proteins = 58           # proteins the demo mine holds for it; no pdb: the demo has no structures
+
+[mines.local.frontend]
+# /align-sequence on the BlueGenes origin; only when MINE_TESTS_LOCAL_ALIGN_SEQUENCE is non-empty
+align_sequence = "${MINE_TESTS_LOCAL_ALIGN_SEQUENCE:-}"
 
 [mines.local.gene.expect]
 rcsb = false
