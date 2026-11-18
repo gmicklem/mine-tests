@@ -34,6 +34,8 @@ class Mine:
     frontend: dict = field(default_factory=dict)
     gene: dict = field(default_factory=dict)
     tools: dict = field(default_factory=dict)
+    compare_with: str | None = None  # key of a reference mine whose report page this one must match
+    compare_exceptions: dict = field(default_factory=dict)  # tool class -> reason it may differ
 
     @property
     def service(self) -> str:
@@ -87,11 +89,13 @@ def _expand_env(value):
     return value
 
 
-def _load_mines(config) -> list[Mine]:
+def _load_mines(config, everything=False) -> list[Mine]:
+    """The mines selected by --mine (all with `everything`, which the
+    reference-mine lookup uses so a reference need not be selected)."""
     with open(config.getoption("--config"), "rb") as fh:
         data = tomllib.load(fh)
     overrides = dict(o.split("=", 1) for o in config.getoption("--url-override"))
-    wanted = config.getoption("--mine")
+    wanted = [] if everything else config.getoption("--mine")
     mines = []
     for key, m in data["mines"].items():
         if wanted and key not in wanted:
@@ -260,3 +264,88 @@ def browser(playwright, browser_type, browser_type_launch_args):
         b = browser_type.launch(**browser_type_launch_args)
     yield b
     b.close()
+
+
+# ---- Reference mine (tests/browser/test_report_tools.py, comparison) -------
+# A mine with `compare_with = "<key>"` is compared with that mine's report page
+# for the same gene.  The reference page is loaded once per session, whatever
+# the number of mines or tests, and the reference mine is only read.
+
+# One entry per BlueGenes tool panel on a report page: whether it drew
+# something, its text, the report section (category) and the item title.
+PANELS_JS = """
+() => {
+  const out = {};
+  for (const el of document.querySelectorAll('[class]')) {
+    const cls = [...el.classList].find(c => /^blu(e)?genes/i.test(c));
+    if (!cls || out[cls]) continue;
+    const table = el.closest('.report-table');
+    const item = el.closest('.report-item');
+    const text = (n) => n ? n.textContent.replace(/\\s+/g, ' ').trim() : '';
+    out[cls] = {
+      rendered: !!el.querySelector('canvas, svg, iframe, table, select, img'),
+      text: text(el).slice(0, 200),
+      category: text(table && table.querySelector('.report-table-heading')),
+      title: text(item && item.querySelector('.report-item-title')),
+    };
+  }
+  return out;
+}
+"""
+REFERENCE_PAGE_TIMEOUT_MS = 60_000
+REFERENCE_SETTLE_MS = 60_000
+_reference_cache: dict = {}
+
+
+@pytest.fixture(scope="session")
+def reference_report(request, browser, browser_context_args, http, mine):
+    """Tool panels of the report page of `mine.compare_with`, for the same
+    fixture gene, as {tool class: {rendered, text, category, title}}.  One page
+    load per reference mine and session; the test is skipped when the
+    reference is not configured for this mine or cannot be reached."""
+    if not mine.compare_with:
+        pytest.skip(f"{mine.key}: no compare_with reference mine configured")
+    key = mine.compare_with
+    if key not in _reference_cache:
+        ref = next((m for m in _load_mines(request.config, everything=True) if m.key == key), None)
+        if ref is None:
+            pytest.fail(f"{mine.key}: compare_with = {key!r} is not a mine in the config")
+        _reference_cache[key] = _load_reference(browser, browser_context_args, http, ref, mine)
+    result = _reference_cache[key]
+    if isinstance(result, str):
+        pytest.skip(result)
+    return result
+
+
+def _load_reference(browser, browser_context_args, http, ref: Mine, mine: Mine):
+    """Panels dict, or a string saying why the reference could not be read."""
+    try:
+        gid = _resolve_gene_id(http, ref)
+    except BaseException as e:      # pytest.fail raises a BaseException
+        return f"reference {ref.key} unreachable or gene not found: {e}"
+    ctx = browser.new_context(**browser_context_args)
+    try:
+        page = ctx.new_page()
+        resp = page.goto(ref.report("Gene", gid), wait_until="domcontentloaded",
+                         timeout=REFERENCE_PAGE_TIMEOUT_MS)
+        if resp is None or resp.status >= 400:
+            return f"reference {ref.key} answered HTTP {resp.status if resp else '?'}"
+        expected = list(ref.tools.get("rendered", []))
+        try:
+            for cls in expected:
+                page.wait_for_selector(f".{cls}", state="attached", timeout=REFERENCE_SETTLE_MS)
+            page.wait_for_function(
+                "(classes) => classes.every(c => { const el = document.querySelector('.' + c);"
+                " return el && el.querySelector('canvas, svg, iframe, table, select, img'); })",
+                arg=expected, timeout=REFERENCE_SETTLE_MS)
+        except Exception:
+            pass    # take what is there; the comparison reports the rest
+        page.wait_for_timeout(3000)
+        panels = page.evaluate(PANELS_JS)
+    except Exception as e:
+        return f"reference {ref.key} unreachable: {type(e).__name__}: {str(e)[:200]}"
+    finally:
+        ctx.close()
+    if not panels:
+        return f"reference {ref.key} report page showed no tool panels"
+    return panels

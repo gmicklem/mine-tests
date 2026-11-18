@@ -14,6 +14,8 @@
 #            JBrowse REST tests and drops the location from the gene query (default true)
 # has_tool_store  false when BlueGenes has no tool store / installed tools: skips
 #            the tool listing and bundle-patch tests (default true)
+# compare_with  key of a reference mine; its report page is compared tool by tool
+#            (compare_exceptions: tool class -> reason it may differ)
 # min_templates  the mine must publish at least this many templates (default 10)
 # Any string value may use ${NAME} or ${NAME:-default}, replaced from the
 # environment when the file is read.
@@ -131,3 +133,56 @@ align = false
 
 [mines.local.tools]
 rendered = []
+
+# ---- local-hybrid: the milestone 1 profile ---------------------------------------
+# The "ut" stack: a 6.0.0 mine on :18090 with the full HumanMine data set (as it is
+# loaded), BlueGenes behind nginx on :15001 with HumanMine's tools, /align-sequence,
+# imjs.  The values are what the milestone gate requires; each test that the stack's
+# data cannot yet satisfy fails or skips for that reason.  [mines.local] stays the
+# 5.1.1 baseline.  Run:  pytest --mine local-hybrid   (README, "The milestone gate").
+# compare_with names the reference mine whose report page for the same gene is
+# compared, tool by tool (test_tool_panels_match_reference).
+[mines.local-hybrid]
+url = "${MINE_TESTS_HYBRID_URL:-http://localhost:15001}"
+service_url = "${MINE_TESTS_HYBRID_SERVICE_URL:-http://localhost:18090/humanmine/service}"
+webapp = "humanmine"
+taxon = 9606
+has_locations = true
+has_tool_store = true
+min_templates = 9
+# JBrowse 1 site of the stack, for the JBrowse REST/iframe tests.  Empty until the
+# stack serves one (T1.4/T1.5); the iframe test then skips.
+jbrowse = "${MINE_TESTS_HYBRID_JBROWSE:-}"
+compare_with = "humanmine"
+
+[mines.local-hybrid.frontend]
+align_sequence = true
+imjs_vendor = true
+
+[mines.local-hybrid.gene]
+symbol = "PAX6"
+primary_identifier = "5080"
+chromosome = "11"
+start = 31789026
+end = 31817961
+min_proteins = 5
+pdb = "2CUE"
+
+[mines.local-hybrid.gene.expect]
+rcsb = true
+align = true
+
+[mines.local-hybrid.tools]
+rendered = [
+  "bluegenesJBrowseTool",
+  "bluegenesProteinVisualizer",
+  "bluegenesMSAViewer",
+  "bluegenesHumanTissueExpressionVisualizer",
+  "bluegenesProteinAtlasTissueExpressionVisualizer",
+  "bluegenesToolCytoscape",
+  "bluegenesJBrowse2Tool",
+]
+
+# Tools that may differ from the reference, each with the reason (printed in the
+# comparison table).  Empty at the milestone: nothing is excused.
+[mines.local-hybrid.compare_exceptions]

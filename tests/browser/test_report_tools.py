@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from conftest import feature
+from conftest import PANELS_JS as JS_TOOL_PANELS, feature
 
 PAGE_TIMEOUT_MS = 90_000
 SETTLE_MS = 90_000
@@ -31,20 +31,6 @@ JS_RENDERED = """
   const el = document.querySelector('.' + cls);
   return el && el.querySelector('canvas, svg, iframe, table, select, img');
 })
-"""
-JS_TOOL_PANELS = """
-() => {
-  const out = {};
-  for (const el of document.querySelectorAll('[class]')) {
-    const cls = [...el.classList].find(c => /^blu(e)?genes/i.test(c));
-    if (!cls || out[cls]) continue;
-    out[cls] = {
-      rendered: !!el.querySelector('canvas, svg, iframe, table, select, img'),
-      text: el.textContent.replace(/\\s+/g, ' ').trim().slice(0, 200),
-    };
-  }
-  return out;
-}
 """
 
 
@@ -178,3 +164,60 @@ def test_jbrowse_iframe_loads(report):
     frame.wait_for_selector(".track", timeout=60_000)
     body = frame.evaluate("document.body.innerText")
     assert not re.search(r"Error|could not", body), body[:300]
+
+
+def panel_state(panel):
+    """content (drew something), error (error text), text (text only) or empty."""
+    if ERROR_TEXT.search(panel["text"]):
+        return "error"
+    if panel["rendered"]:
+        return "content"
+    return "text" if panel["text"] else "empty"
+
+
+def compare_panels(reference, panels, exceptions):
+    """Rows (tool, reference state, mine state, category note, verdict) and the
+    number of failures.  Every tool the reference draws must draw here too,
+    unless listed in `exceptions` (tool class -> reason)."""
+    rows, failures = [], 0
+    for cls in sorted(set(reference) | set(panels)):
+        ref, got = reference.get(cls), panels.get(cls)
+        ref_state = panel_state(ref) if ref else "absent"
+        got_state = panel_state(got) if got else "absent"
+        note = ""
+        if ref and got and ref["category"] != got["category"]:
+            note = f"category {ref['category']!r} here {got['category']!r}"
+        if not ref:
+            verdict = "extra here, ignored"
+        elif ref_state != "content":
+            verdict = "ok (reference does not draw it)"
+        elif got_state == "content":
+            verdict = "ok"
+        elif cls in exceptions:
+            verdict = f"excused: {exceptions[cls]}"
+        else:
+            verdict = "FAIL"
+            failures += 1
+        rows.append((cls, ref_state, got_state, note, verdict))
+    return rows, failures
+
+
+def format_rows(rows):
+    head = ("tool", "reference", "this mine", "category", "verdict")
+    table = [head] + [r for r in rows]
+    widths = [max(len(str(r[i])) for r in table) for i in range(len(head))]
+    return "\n".join("  ".join(str(c).ljust(w) for c, w in zip(r, widths)).rstrip() for r in table)
+
+
+def test_tool_panels_match_reference(report, reference_report):
+    """The mine renders every tool panel the reference mine (compare_with)
+    renders for the same gene.  Differences are listed in a table; tools in
+    compare_exceptions are excused with their stated reason."""
+    mine = report.mine
+    rows, failures = compare_panels(reference_report, report.panels, mine.compare_exceptions)
+    table = format_rows(rows)
+    print(f"\nTool panels, {mine.compare_with} vs {mine.key}:\n{table}")
+    unknown = sorted(set(mine.compare_exceptions) - set(reference_report))
+    assert not failures, (f"{failures} tool(s) drawn on {mine.compare_with} do not draw on {mine.key}:\n"
+                          f"{table}\nexceptions are configured in [mines.{mine.key}.compare_exceptions]"
+                          + (f"\n(exceptions naming tools the reference lacks: {unknown})" if unknown else ""))

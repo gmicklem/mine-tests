@@ -18,7 +18,7 @@ in [`mines.toml`](mines.toml); add a mine by adding a section there.
 | `tests/service/test_frontend.py` | BlueGenes HTML, imjs available to tools, tool store list and files, favicon, classic webapp, no internal hostnames | Python only |
 | `tests/service/test_jbrowse.py` | InterMine's JBrowse REST endpoints (track list, refseqs, features, sequence, stats, names) and the JBrowse site | Python only |
 | `tests/service/test_tools.py` | Tool bundle patches, the `/align-sequence` route, RCSB v2 search for the fixture protein | Python only |
-| `tests/browser/test_report_tools.py` | A gene report page in Chromium/Firefox/WebKit: every configured tool draws, no error text, no uncaught exceptions, RCSB v2 and aligner calls succeed, JBrowse iframe loads | Playwright |
+| `tests/browser/test_report_tools.py` | A gene report page in Chromium/Firefox/WebKit: every configured tool draws, no error text, no uncaught exceptions, RCSB v2 and aligner calls succeed, JBrowse iframe loads; for a mine with `compare_with`, its tool panels match the reference mine's | Playwright |
 | `tools/relay/relay.py` | Patch rehearsal: serve local files (e.g. a patched tool bundle) in place of a live site's, relay the rest | Python only |
 | `.github/workflows/nightly.yml` | Runs everything daily against the configured mines | GitHub Actions |
 
@@ -133,6 +133,40 @@ CDN hosts BlueGenes loads scripts from (`cdn.intermine.org`,
 blocked, `test_imjs_present_for_tools`, `test_imjs_is_available` and
 `test_page_scripts_load` fail by design.  `test_favicon` fails while the
 deployment's BlueGenes redirects `/favicon.ico` to an internal Docker host name.
+
+### The milestone gate: `local-hybrid`
+
+`[mines.local-hybrid]` is the profile for the hybrid stack (a 6.0.0 mine on
+`:18090/humanmine`, BlueGenes behind nginx on `:15001` with HumanMine's tools,
+the JBrowse 2 tool, `/align-sequence`, imjs).  It holds the milestone values:
+fixture gene PAX6, `has_locations` and `has_tool_store` true, `gene.expect.rcsb`
+and `align` true, `tools.rendered` = HumanMine's six plus
+`bluegenesJBrowse2Tool`.  `[mines.local]` stays the 5.1.1 baseline, so nothing
+needs switching by variable: choose the profile with `--mine`.  One command
+runs the gate (browser suite plus the side-by-side comparison):
+
+```sh
+MINE_TESTS_BROWSER_PATH=/path/to/chromium \
+MINE_TESTS_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage" \
+  pytest tests/browser --mine local-hybrid --browser chromium -rfs
+pytest tests/service --mine local-hybrid        # service side of the same stack
+```
+
+`MINE_TESTS_HYBRID_URL`, `MINE_TESTS_HYBRID_SERVICE_URL` and
+`MINE_TESTS_HYBRID_JBROWSE` (the JBrowse 1 site, empty by default so the iframe
+test skips until the stack serves one) move it to another host.
+
+`test_tool_panels_match_reference` loads the report page of the mine named by
+`compare_with` (`humanmine`, public and read-only) for the same gene, and
+compares the tool panels: which tool containers exist, their report section
+(category), and whether each draws content, shows error text or is empty.  Every
+tool that draws on the reference must draw on the mine under test; extra tools
+and differing categories are only listed.  The result is a table in the failure
+message (print it with `-s`).  Tools that may differ go in
+`[mines.<key>.compare_exceptions]` as `tool class = "reason"`; the reason is
+printed in the table.  The reference page is loaded once per session; the test
+skips when the reference is unreachable or `compare_with` is not set (it is not,
+for `humanmine`, `flymine` and `local`).
 
 ## Interpreting failures
 
