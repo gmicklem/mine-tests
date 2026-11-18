@@ -97,7 +97,7 @@ environment when the file is loaded.
 ### The local demo mine
 
 `[mines.local]` describes the [rdfc2im](https://github.com/intermine/rdfc2im)
-demo mine (113 human genes, no chromosome locations, no JBrowse, no tool
+demo mine (114 human genes, no chromosome locations, no JBrowse, no tool
 store, no nginx front end) as run by its Docker stack: BlueGenes on
 `http://localhost:5000`, web service on `http://localhost:8090/humanmine/service`.
 For another host or port:

@@ -104,7 +104,7 @@ rendered = [
   "bluegenesToolCytoscape",
 ]
 
-# The rdfc2im demo mine (https://github.com/intermine/rdfc2im, 113 human genes from RDF
+# The rdfc2im demo mine (https://github.com/intermine/rdfc2im, 114 human genes from RDF
 # Portal) deployed on the same machine: BlueGenes on :5000, the web service on :8090 with
 # no nginx front end, no chromosome locations, no JBrowse, no tool store.  Point it at
 # another host or port with MINE_TESTS_LOCAL_URL (BlueGenes) and
