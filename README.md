@@ -16,9 +16,9 @@ in [`mines.toml`](mines.toml); add a mine by adding a section there.
 |------|----------------|-------|
 | `tests/service/test_webservice.py` | InterMine web service: version, model, a known gene by query and keyword search, templates, query schemas | Python only |
 | `tests/service/test_frontend.py` | BlueGenes HTML, imjs available to tools, tool store list and files, favicon, classic webapp, no internal hostnames | Python only |
-| `tests/service/test_jbrowse.py` | InterMine's JBrowse REST endpoints (track list, refseqs, features, sequence, stats, names) and the JBrowse site | Python only |
+| `tests/service/test_jbrowse.py` | InterMine's JBrowse REST endpoints (track list, refseqs, features, sequence, stats, names) and the JBrowse 1 and JBrowse 2 sites | Python only |
 | `tests/service/test_tools.py` | Tool bundle patches, the `/align-sequence` route, RCSB v2 search for the fixture protein | Python only |
-| `tests/browser/test_report_tools.py` | A gene report page in Chromium/Firefox/WebKit: every configured tool draws, no error text, no uncaught exceptions, RCSB v2 and aligner calls succeed, JBrowse iframe loads; for a mine with `compare_with`, its tool panels match the reference mine's | Playwright |
+| `tests/browser/test_report_tools.py` | A gene report page in Chromium/Firefox/WebKit: every configured tool draws, no error text, no uncaught exceptions, RCSB v2 and aligner calls succeed, the JBrowse 1 or JBrowse 2 iframe loads and (JBrowse 2) opens a view with a track drawn; for a mine with `compare_with`, its tool panels match the reference mine's | Playwright |
 | `tools/relay/relay.py` | Patch rehearsal: serve local files (e.g. a patched tool bundle) in place of a live site's, relay the rest | Python only |
 | `.github/workflows/nightly.yml` | Runs everything daily against the configured mines | GitHub Actions |
 
@@ -84,7 +84,8 @@ Per mine in `mines.toml` (all optional except `url`, `webapp`, `taxon`):
 | `has_locations` | `true` | `false` skips the JBrowse REST tests that need a chromosome (refseqs, features, sequence, stats, names) and drops chromosome/location from the fixture-gene query |
 | `has_tool_store` | `true` | `false` skips the tool-store listing and the tool bundle patch tests |
 | `min_templates` | `10` | the mine must publish at least this many templates |
-| `jbrowse` | none | omit to skip the JBrowse site and iframe tests |
+| `jbrowse` | none | JBrowse 1 site; omit to skip the JBrowse 1 site test and, with it, the iframe test (which also skips when `tools.rendered` lacks `bluegenesJBrowseTool`) |
+| `jbrowse2` | none | JBrowse 2 site (absolute URL; the tool's iframe `src`, resolved, must start with it); omit to skip the JBrowse 2 site and iframe tests |
 | `frontend.*` | none | docker_template nginx routes; omit or `false` to skip the matching tests |
 | `gene.primary_identifier` / `gene.symbol` | none | how the fixture gene's object id is looked up at test start (primaryIdentifier preferred) |
 | `gene.id` | none | fallback object id, used only when that lookup fails; ids change on rebuild |
@@ -140,8 +141,8 @@ deployment's BlueGenes redirects `/favicon.ico` to an internal Docker host name.
 `:18090/humanmine`, BlueGenes behind nginx on `:15001` with HumanMine's tools,
 the JBrowse 2 tool, `/align-sequence`, imjs).  It holds the milestone values:
 fixture gene PAX6, `has_locations` and `has_tool_store` true, `gene.expect.rcsb`
-and `align` true, `tools.rendered` = HumanMine's six plus
-`bluegenesJBrowse2Tool`.  `[mines.local]` stays the 5.1.1 baseline, so nothing
+and `align` true, `tools.rendered` = HumanMine's five tool panels plus
+`bluegenesJBrowse2Tool` (live HumanMine's report layout has no JBrowse 1 tool).  `[mines.local]` stays the 5.1.1 baseline, so nothing
 needs switching by variable: choose the profile with `--mine`.  One command
 runs the gate (browser suite plus the side-by-side comparison):
 
@@ -153,8 +154,9 @@ pytest tests/service --mine local-hybrid        # service side of the same stack
 ```
 
 `MINE_TESTS_HYBRID_URL`, `MINE_TESTS_HYBRID_SERVICE_URL` and
-`MINE_TESTS_HYBRID_JBROWSE` (the JBrowse 1 site, empty by default so the iframe
-test skips until the stack serves one) move it to another host.
+`MINE_TESTS_HYBRID_JBROWSE` (the JBrowse 1 site, empty: the stack serves none) and
+`MINE_TESTS_HYBRID_JBROWSE2` (default `http://localhost:15001/jbrowse2/`, JBrowse 2 on
+the BlueGenes origin as rdfc2im's `trial/front` serves it) move it to another host.
 
 `test_tool_panels_match_reference` loads the report page of the mine named by
 `compare_with` (`humanmine`, public and read-only) for the same gene, and

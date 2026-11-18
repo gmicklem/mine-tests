@@ -8,6 +8,7 @@ tests then inspect what was captured.  Run with --browser chromium
 import re
 import time
 from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -151,6 +152,8 @@ def test_msa_viewer_calls_the_aligner(report):
 
 def test_jbrowse_iframe_loads(report):
     jb = feature(report.mine, "jbrowse")
+    if "bluegenesJBrowseTool" not in report.mine.tools.get("rendered", []):
+        pytest.skip(f"{report.mine.key}: its report layout has no JBrowse 1 tool (JBrowse 2 is tested by test_jbrowse2_iframe_loads)")
     page = report.page
     frame_el = page.locator(".bluegenesJBrowseTool iframe")
     assert frame_el.count() == 1, "no JBrowse iframe in the tool panel"
@@ -164,6 +167,38 @@ def test_jbrowse_iframe_loads(report):
     frame.wait_for_selector(".track", timeout=60_000)
     body = frame.evaluate("document.body.innerText")
     assert not re.search(r"Error|could not", body), body[:300]
+
+
+def test_jbrowse2_iframe_loads(report):
+    """The JBrowse 2 tool's iframe: its URL names this mine's assembly and gene
+    region, the site it points at answers, and the view opens with a gene track
+    drawn.  The site is `jbrowse2` in the mine's config (HumanMine's is its own
+    /jbrowse2/, the testbed's is the BlueGenes origin's /jbrowse2/)."""
+    jb2 = feature(report.mine, "jbrowse2")
+    page = report.page
+    frame_el = page.locator(".bluegenesJBrowse2Tool iframe")
+    assert frame_el.count() == 1, "no JBrowse 2 iframe in the tool panel"
+    src = frame_el.evaluate("el => el.src")         # resolved, whether the tool config is relative or not
+    assert src.startswith(jb2), f"iframe points at {src}, expected {jb2}..."
+    query = parse_qs(urlparse(src).query)
+    assert query.get("assembly") and query.get("loc") and query.get("tracks"), f"iframe URL lacks assembly, loc or tracks: {src}"
+    gene = report.mine.gene
+    if gene.get("chromosome"):
+        assert query["loc"][0].startswith(gene["chromosome"] + ":"), f"iframe opens at {query['loc'][0]}, not on chromosome {gene['chromosome']}"
+    # the iframe's own document carries a session id once it has loaded the config and the view
+    frame = next((f for f in page.frames if f.url.startswith(jb2) and f != page.main_frame), None)
+    assert frame is not None, f"frame for {jb2} not found among {[f.url for f in page.frames]}"
+    frame.wait_for_selector('input[placeholder="Search for location"]', timeout=60_000)
+    drawn = """() => [...document.querySelectorAll('canvas')].filter(c => c.width > 100 && c.height > 5).length"""
+    for _ in range(60):
+        if frame.evaluate(drawn) >= 2:
+            break
+        time.sleep(1)
+    assert frame.evaluate(drawn) >= 2, "JBrowse 2 drew no track canvas"
+    body = frame.evaluate("document.body.innerText")
+    assert not re.search(r"Error|could not|Failed to", body), body[:300]
+    loc = frame.evaluate("""() => document.querySelector('input[placeholder="Search for location"]').value""")
+    assert loc.replace(",", "").startswith(query["loc"][0].split(":")[0] + ":"), f"view opened at {loc}"
 
 
 def panel_state(panel):
