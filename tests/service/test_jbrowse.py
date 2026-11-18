@@ -94,3 +94,22 @@ def test_jbrowse_site(http, mine):
     for asset in ("dist/main.bundle.js",):
         a = http.head(url.rstrip("/") + "/" + asset, allow_redirects=True)
         assert a.ok, f"{asset} -> {a.status_code}"
+
+
+def test_jbrowse2_site(http, mine):
+    """The JBrowse 2 deployment: its config.json lists the InterMine plugin and this
+    mine's assembly, and the page can be put in an iframe."""
+    url = feature(mine, "jbrowse2")
+    r = http.get(url)
+    r.raise_for_status()
+    assert "JBrowse" in r.text
+    assert "x-frame-options" not in {k.lower() for k in r.headers}, "X-Frame-Options would block the report-page iframe"
+    cfg = http.get(url.rstrip("/") + "/config.json")
+    cfg.raise_for_status()
+    conf = cfg.json()
+    assert any(p.get("name") == "InterMine" for p in conf.get("plugins", [])), "config.json has no InterMine plugin"
+    assemblies = [a["name"] for a in conf.get("assemblies", [])]
+    assert any(a.endswith(f"-{mine.taxon}") for a in assemblies), f"no assembly for taxon {mine.taxon}: {assemblies}"
+    assert conf.get("tracks"), "config.json has no tracks"
+    plugin = http.head(url.rstrip("/") + "/jbrowse-plugin-intermine.umd.production.min.js", allow_redirects=True)
+    assert plugin.ok, f"plugin bundle -> {plugin.status_code}"

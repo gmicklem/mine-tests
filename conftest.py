@@ -27,7 +27,8 @@ class Mine:
     webapp: str
     taxon: int
     service_url: str | None = None
-    jbrowse: str | None = None
+    jbrowse: str | None = None      # JBrowse 1 site
+    jbrowse2: str | None = None     # JBrowse 2 site (an absolute URL, or a path on the BlueGenes origin)
     has_locations: bool = True      # chromosome locations are loaded
     has_tool_store: bool = True     # BlueGenes tool store with tools installed
     min_templates: int = 10         # templates the mine must publish (at least)
