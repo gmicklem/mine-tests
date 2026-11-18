@@ -189,5 +189,8 @@ rendered = [
 ]
 
 # Tools that may differ from the reference, each with the reason (printed in the
-# comparison table).  Empty at the milestone: nothing is excused.
+# comparison table).
 [mines.local-hybrid.compare_exceptions]
+BlueGenesDiseaseExpressionArrayexpressVisualizer = "needs the AtlasExpression pValue and tStatistic of E-MTAB-62 (arrayexpress-atlas: retired ArrayExpress Atlas API, data only in a private copy); the demo loads E-MTAB-513 FPKM values only. Gos, 18 Nov 2026: excused for now; whether newer expression data should replace it is to be researched (intermine-planning docs/TO_INVESTIGATE.md)"
+bluegenesTissueExpressionArrayexpressVisualizer = "needs the AtlasExpression pValue and tStatistic of E-MTAB-62 (arrayexpress-atlas: retired ArrayExpress Atlas API, data only in a private copy); the demo loads E-MTAB-513 FPKM values only. Gos, 18 Nov 2026: excused for now; whether newer expression data should replace it is to be researched (intermine-planning docs/TO_INVESTIGATE.md)"
+bluegenesExpressionBoxSwarmVisualizer = "needs the AtlasExpression pValue and tStatistic of E-MTAB-62 (arrayexpress-atlas: retired ArrayExpress Atlas API, data only in a private copy); the demo loads E-MTAB-513 FPKM values only. Gos, 18 Nov 2026: excused for now; whether newer expression data should replace it is to be researched (intermine-planning docs/TO_INVESTIGATE.md)"
